@@ -18,7 +18,7 @@
     "clsx": "^2.1.1"
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": "20.x",
     "npm": ">=9.0.0"
   },
   "devDependencies": {
