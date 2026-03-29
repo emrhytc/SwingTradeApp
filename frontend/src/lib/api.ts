@@ -1,6 +1,12 @@
 import type { AnalysisResponse } from "./types";
 
-const BASE = "/api/v1";
+// Static export: tarayıcı direkt backend'e istek atar (proxy yok)
+const BACKEND =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" && (window as any).__NEXT_PUBLIC_API_URL) ||
+  "http://localhost:8000";
+
+const BASE = `${BACKEND}/api/v1`;
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path, { cache: "no-store" });
