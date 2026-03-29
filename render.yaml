@@ -1,0 +1,61 @@
+## Render.com Blueprint — SwingTradeApp
+## Docs: https://render.com/docs/blueprint-spec
+##
+## Deploy steps:
+##   1. Push this repo to GitHub
+##   2. Go to render.com → New → Blueprint
+##   3. Connect the repo — both services will be created automatically
+##   4. After first deploy, copy the backend URL (e.g. https://swingtradeapp-api.onrender.com)
+##      and set it as NEXT_PUBLIC_API_URL + API_URL on the frontend service.
+##      Then copy the frontend URL and set it as CORS_ORIGINS on the backend service.
+
+services:
+  # ─────────────────────────────────────────────
+  # Backend — FastAPI
+  # ─────────────────────────────────────────────
+  - type: web
+    name: swingtradeapp-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////tmp/swingtrader.db
+      - key: CACHE_TTL_SECONDS
+        value: 300
+      - key: PYTHON_VERSION
+        value: 3.11.12
+      # ⚠️  Set this after the frontend service is deployed:
+      # CORS_ORIGINS = ["https://your-frontend.onrender.com"]
+      - key: CORS_ORIGINS
+        value: '["https://swingtradeapp-web.onrender.com","http://localhost:3000"]'
+
+  # ─────────────────────────────────────────────
+  # Frontend — Next.js
+  # ─────────────────────────────────────────────
+  - type: web
+    name: swingtradeapp-web
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: NODE_ENV
+        value: production
+      # ⚠️  Set this after the backend service is deployed:
+      # Replace with your actual backend URL from Render dashboard.
+      - key: API_URL
+        value: https://swingtradeapp-api.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://swingtradeapp-api.onrender.com
+      - key: NEXT_TELEMETRY_DISABLED
+        value: 1

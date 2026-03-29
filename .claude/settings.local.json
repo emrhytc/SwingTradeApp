@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(python3.11 -m venv .venv)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(cp .env.example .env)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(pip3 --version)",
+      "Read(//usr/bin/**)",
+      "Bash(pyenv versions:*)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(brew list:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(curl -s http://localhost:8000/api/v1/health)",
+      "Bash(python3 -m json.tool)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s \"http://localhost:8000/api/v1/analysis?symbol=AAPL&timeframe=1D&include_chart_data=false\")",
+      "Bash(npm install:*)",
+      "Bash(echo $PATH)",
+      "Read(//Volumes/MAC Mini SSD/emrehayretci/.pyenv/shims/**)",
+      "Bash(pyenv which:*)",
+      "Bash(brew install:*)",
+      "Bash(sudo xcodebuild:*)",
+      "Bash(tar -xzf /tmp/node.tar.gz -C /tmp/)",
+      "Read(//tmp/node-v22.14.0-darwin-arm64/**)",
+      "Bash(export PATH=\"/tmp/node-v22.14.0-darwin-arm64/bin:$PATH\")",
+      "Bash(npm --version)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s \"http://localhost:8000/api/v1/analysis?symbol=NVDA&timeframe=1D&include_chart_data=false\")",
+      "Bash(npm run:*)"
+    ]
+  }
+}
