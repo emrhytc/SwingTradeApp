@@ -8,11 +8,11 @@ const QUICK_SYMBOLS = [
 ];
 
 interface Props {
-  value: string;
+  value?: string;
   onSelect: (symbol: string) => void;
 }
 
-export function SymbolSearch({ value, onSelect }: Props) {
+export function SymbolSearch({ value = "", onSelect }: Props) {
   const [input, setInput] = useState(value);
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

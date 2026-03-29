@@ -29,7 +29,7 @@ export function TechnicalStatePanel({ state }: Props) {
       <Section title="Chop">
         <Row label="Status" value={state.chop_status} />
         <Row label="Efficiency Ratio" value={state.efficiency_ratio.toFixed(3)} />
-        <Row label="Chop Index" value={state.chop_index.toFixed(1)} thresholds={[38.2, 61.8]} invertColors />
+        <Row label="Chop Index" value={state.chop_index.toFixed(1)} />
         <Row label="Avg Wick Ratio" value={`${(state.avg_wick_ratio * 100).toFixed(0)}%`} />
       </Section>
 
@@ -69,14 +69,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({
   label,
   value,
-  thresholds,
-  invertColors,
   forceColor,
 }: {
   label: string;
   value: string;
-  thresholds?: [number, number];
-  invertColors?: boolean;
   forceColor?: string;
 }) {
   return (
