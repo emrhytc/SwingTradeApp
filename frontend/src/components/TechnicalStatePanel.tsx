@@ -41,9 +41,9 @@ export function TechnicalStatePanel({ state }: Props) {
 
       <Section title="Multi-Timeframe">
         <div className="flex gap-2">
-          <TFBadge label="1D" direction={state.daily_trend} />
-          <TFBadge label="4H" direction={state.h4_trend} />
-          <TFBadge label="1H" direction={state.h1_trend} />
+          <TFBadge label={state.context_tfs?.[0] ?? "1D"} direction={state.daily_trend} />
+          <TFBadge label={state.context_tfs?.[1] ?? "4H"} direction={state.h4_trend} />
+          <TFBadge label={state.context_tfs?.[2] ?? "1H"} direction={state.h1_trend} />
         </div>
         <Row
           label="Alignment"

@@ -86,12 +86,14 @@ class TechnicalState(BaseModel):
     obv_trend: str  # e.g. "Rising with price (Confirming)"
     participation_status: str
 
-    # MTF
+    # MTF — context_tfs labels match daily_trend / h4_trend / h1_trend order
     daily_trend: RegimeDirection
     h4_trend: RegimeDirection
     h1_trend: RegimeDirection
     mtf_conflict: bool
     mtf_summary: str
+    # Actual TF labels used (e.g. ["4H","1H","15m"] when primary is 15m)
+    context_tfs: List[str] = ["1D", "4H", "1H"]
 
 
 class IndicatorSnapshot(BaseModel):

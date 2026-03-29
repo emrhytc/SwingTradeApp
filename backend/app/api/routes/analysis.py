@@ -30,12 +30,31 @@ from app.explanation.generator import generate_explanation
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
+# Maps primary timeframe → (highest_ctx_tf, middle_ctx_tf)
+CONTEXT_TIMEFRAMES: dict[str, tuple[str | None, str | None]] = {
+    "15m": ("4H", "1H"),
+    "1H":  ("1D", "4H"),
+    "4H":  ("1D", None),
+    "1D":  (None, None),
+    "1W":  (None, None),
+}
+
 # Simple in-process TTL cache: {cache_key: (result, timestamp)}
 _cache: dict = {}
 
 
 def _get_provider() -> MarketDataProvider:
     return YFinanceProvider()
+
+
+def _fetch_ema_stack(provider: MarketDataProvider, symbol: str, timeframe: str) -> int | None:
+    """Fetch EMA stack score for a context timeframe. Returns None on failure."""
+    try:
+        df = provider.get_ohlcv(DataRequest(symbol=symbol, timeframe=timeframe, bars=500))
+        return compute_trend_indicators(df).ema_stack_score
+    except Exception as e:
+        logger.warning("Could not fetch context stack for %s/%s: %s", symbol, timeframe, e)
+        return None
 
 
 def _cache_key(symbol: str, timeframe: str) -> str:
@@ -75,6 +94,7 @@ def _build_technical_state(
     trend, vol, chop, part,
     daily_stack=None, h4_stack=None, h1_stack=None,
     regime_direction=None,
+    context_tfs: list[str] | None = None,
 ) -> TechnicalState:
     """Assemble the TechnicalState summary object."""
 
@@ -175,6 +195,7 @@ def _build_technical_state(
         h1_trend=h1_dir,
         mtf_conflict=mtf_conflict,
         mtf_summary=mtf_summary,
+        context_tfs=context_tfs or ["1D", "4H", "1H"],
     )
 
 
@@ -201,6 +222,23 @@ def _run_analysis_pipeline(
 
     # Run indicators
     trend = compute_trend_indicators(df)
+
+    # Auto-fetch context TF stacks when not explicitly provided
+    ctx_high, ctx_mid = CONTEXT_TIMEFRAMES.get(timeframe, (None, None))
+    if daily_stack is None and ctx_high:
+        daily_stack = _fetch_ema_stack(provider, symbol, ctx_high)
+    if h4_stack is None and ctx_mid:
+        h4_stack = _fetch_ema_stack(provider, symbol, ctx_mid)
+    # h1_stack = primary TF's own EMA trend (for the "primary" badge in the UI)
+    if h1_stack is None:
+        h1_stack = trend.ema_stack_score
+
+    # Display labels for the 3 MTF trend badges
+    context_tfs = [
+        ctx_high or "1D",
+        ctx_mid or "4H",
+        timeframe,
+    ]
     vol = compute_volatility_indicators(df)
     chop = compute_chop_indicators(df)
     part = compute_participation_indicators(df)
@@ -233,6 +271,7 @@ def _run_analysis_pipeline(
         h4_stack=h4_stack,
         h1_stack=h1_stack,
         regime_direction=regime_direction,
+        context_tfs=context_tfs,
     )
 
     # Raw indicator snapshot
@@ -287,7 +326,7 @@ def _run_analysis_pipeline(
 @router.get("/analysis", response_model=AnalysisResponse)
 async def get_analysis(
     symbol: str = Query(..., description="Ticker symbol e.g. AAPL, BTC-USD"),
-    timeframe: str = Query("1D", description="Timeframe: 1H, 4H, 1D, 1W"),
+    timeframe: str = Query("1D", description="Timeframe: 15m, 1H, 4H, 1D, 1W"),
     include_chart_data: bool = Query(True, description="Include OHLCV bars in response"),
     use_cache: bool = Query(True),
 ):

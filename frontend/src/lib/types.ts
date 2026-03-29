@@ -51,6 +51,7 @@ export interface TechnicalState {
   h1_trend: RegimeDirection;
   mtf_conflict: boolean;
   mtf_summary: string;
+  context_tfs: string[];
 }
 
 export interface IndicatorSnapshot {
@@ -105,5 +106,5 @@ export interface AnalysisResponse {
   chart_data: OHLCVBar[] | null;
 }
 
-export const TIMEFRAMES = ["1H", "4H", "1D", "1W"] as const;
+export const TIMEFRAMES = ["15m", "1H", "4H", "1D", "1W"] as const;
 export type Timeframe = (typeof TIMEFRAMES)[number];
