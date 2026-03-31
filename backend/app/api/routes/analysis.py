@@ -30,6 +30,38 @@ from app.explanation.generator import generate_explanation
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
+# Map common aliases (TradingView, broker notation) → yfinance ticker symbols
+SYMBOL_ALIASES: dict[str, str] = {
+    # Nasdaq 100 futures
+    "NQ!1": "NQ=F", "NQ1!": "NQ=F", "NQ": "NQ=F",
+    # S&P 500 futures
+    "ES!1": "ES=F", "ES1!": "ES=F", "ES": "ES=F",
+    # Dow Jones futures
+    "YM!1": "YM=F", "YM1!": "YM=F", "YM": "YM=F",
+    # Russell 2000 futures
+    "RTY!1": "RTY=F", "RTY1!": "RTY=F",
+    # Crude Oil futures
+    "CL!1": "CL=F", "CL1!": "CL=F",
+    # Gold futures / spot aliases
+    "XAUUSD": "GC=F", "GC!1": "GC=F", "GC1!": "GC=F",
+    # Silver futures / spot aliases
+    "XAGUSD": "SI=F", "SI!1": "SI=F", "SI1!": "SI=F",
+    # EUR/USD spot
+    "EURUSD": "EURUSD=X",
+    # GBP/USD spot
+    "GBPUSD": "GBPUSD=X",
+    # USD/JPY spot
+    "USDJPY": "JPY=X",
+    # VIX
+    "VIX": "^VIX",
+}
+
+
+def _normalize_symbol(symbol: str) -> str:
+    """Convert user-facing symbol aliases to yfinance-compatible tickers."""
+    upper = symbol.upper().strip()
+    return SYMBOL_ALIASES.get(upper, upper)
+
 # Maps primary timeframe → (highest_ctx_tf, middle_ctx_tf)
 CONTEXT_TIMEFRAMES: dict[str, tuple[str | None, str | None]] = {
     "15m": ("4H", "1H"),
@@ -333,7 +365,7 @@ async def get_analysis(
     """
     Full swing trade suitability analysis for a single symbol and timeframe.
     """
-    symbol = symbol.upper().strip()
+    symbol = _normalize_symbol(symbol)
     key = _cache_key(symbol, timeframe)
 
     if use_cache:
@@ -354,7 +386,7 @@ async def get_mtf_analysis(
     """
     Full multi-timeframe analysis: 1D, 4H, 1H computed together for alignment scoring.
     """
-    symbol = symbol.upper().strip()
+    symbol = _normalize_symbol(symbol)
 
     # Fetch daily first to get the stack for MTF context
     daily_result = None
@@ -438,7 +470,7 @@ async def scan_symbols(request: ScanRequest):
     for symbol in request.symbols:
         try:
             analysis = _run_analysis_pipeline(
-                symbol.upper(), request.timeframe, include_chart_data=False
+                _normalize_symbol(symbol), request.timeframe, include_chart_data=False
             )
             results.append(ScanResult(
                 symbol=symbol.upper(),

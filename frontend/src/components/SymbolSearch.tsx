@@ -3,9 +3,32 @@
 import { useState, useRef } from "react";
 
 const QUICK_SYMBOLS = [
+  // Stocks & ETFs
   "AAPL", "MSFT", "NVDA", "TSLA", "SPY", "QQQ",
-  "BTC-USD", "ETH-USD", "GLD", "TLT",
+  // Futures
+  "NQ=F", "ES=F", "YM=F", "CL=F", "GC=F", "SI=F",
+  // Forex / Metals (spot)
+  "XAUUSD", "XAGUSD", "EURUSD", "GBPUSD",
+  // Crypto
+  "BTC-USD", "ETH-USD",
+  // Bonds / Other
+  "GLD", "TLT", "^VIX",
 ];
+
+// Human-readable labels for display
+const SYMBOL_LABELS: Record<string, string> = {
+  "NQ=F": "NQ=F (Nasdaq Fut.)",
+  "ES=F": "ES=F (S&P500 Fut.)",
+  "YM=F": "YM=F (Dow Fut.)",
+  "CL=F": "CL=F (Crude Oil)",
+  "GC=F": "GC=F (Gold Fut.)",
+  "SI=F": "SI=F (Silver Fut.)",
+  "XAUUSD": "XAUUSD (Gold)",
+  "XAGUSD": "XAGUSD (Silver)",
+  "EURUSD": "EURUSD",
+  "GBPUSD": "GBPUSD",
+  "^VIX": "^VIX (Volatility)",
+};
 
 interface Props {
   value?: string;
@@ -52,14 +75,14 @@ export function SymbolSearch({ value = "", onSelect }: Props) {
       </div>
 
       {open && filtered.length > 0 && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-surface-border bg-surface-card shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-surface-border bg-surface-card shadow-xl">
           {filtered.map((sym) => (
             <button
               key={sym}
               onMouseDown={() => commit(sym)}
               className="w-full px-3 py-2 text-left text-xs font-mono text-slate-300 hover:bg-surface-hover hover:text-slate-100"
             >
-              {sym}
+              {SYMBOL_LABELS[sym] ?? sym}
             </button>
           ))}
         </div>
