@@ -19,6 +19,7 @@ from app.schemas.analysis import (
 )
 from app.data.providers.base import DataRequest, MarketDataProvider
 from app.data.providers.yfinance_provider import YFinanceProvider
+from app.data.providers.tradingview_provider import TradingViewProvider
 from app.indicators.trend import compute_trend_indicators
 from app.indicators.volatility import compute_volatility_indicators
 from app.indicators.chop import compute_chop_indicators
@@ -75,14 +76,38 @@ CONTEXT_TIMEFRAMES: dict[str, tuple[str | None, str | None]] = {
 _cache: dict = {}
 
 
-def _get_provider() -> MarketDataProvider:
+def _get_provider(prefer: str = "tradingview") -> MarketDataProvider:
+    """
+    Return the configured data provider.
+    'tradingview' → TradingViewProvider (with yfinance fallback on fetch errors)
+    'yfinance'    → YFinanceProvider directly
+    """
+    if prefer == "tradingview":
+        return TradingViewProvider()
     return YFinanceProvider()
 
 
-def _fetch_ema_stack(provider: MarketDataProvider, symbol: str, timeframe: str) -> int | None:
+def _get_ohlcv_with_fallback(symbol: str, timeframe: str, bars: int) -> pd.DataFrame:
+    """
+    Try TradingView first; fall back to yfinance if TV fails.
+    This lets TradingView-native symbols (NQ1!, XAUUSD) work seamlessly,
+    while standard stocks still work if TV is unavailable.
+    """
+    tv = TradingViewProvider()
+    try:
+        return tv.get_ohlcv(DataRequest(symbol=symbol, timeframe=timeframe, bars=bars))
+    except Exception as e:
+        logger.warning("TradingView failed for %s/%s (%s) — falling back to yfinance", symbol, timeframe, e)
+
+    # yfinance fallback: map back to yfinance ticker if needed
+    yf_symbol = SYMBOL_ALIASES.get(symbol.upper(), symbol)
+    return YFinanceProvider().get_ohlcv(DataRequest(symbol=yf_symbol, timeframe=timeframe, bars=bars))
+
+
+def _fetch_ema_stack(symbol: str, timeframe: str) -> int | None:
     """Fetch EMA stack score for a context timeframe. Returns None on failure."""
     try:
-        df = provider.get_ohlcv(DataRequest(symbol=symbol, timeframe=timeframe, bars=500))
+        df = _get_ohlcv_with_fallback(symbol, timeframe, 500)
         return compute_trend_indicators(df).ema_stack_score
     except Exception as e:
         logger.warning("Could not fetch context stack for %s/%s: %s", symbol, timeframe, e)
@@ -241,11 +266,8 @@ def _run_analysis_pipeline(
 ) -> AnalysisResponse:
     """Core pipeline: fetch → indicators → score → explain → build response."""
 
-    provider = _get_provider()
-    req = DataRequest(symbol=symbol, timeframe=timeframe, bars=500)
-
     try:
-        df = provider.get_ohlcv(req)
+        df = _get_ohlcv_with_fallback(symbol, timeframe, 500)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -258,9 +280,9 @@ def _run_analysis_pipeline(
     # Auto-fetch context TF stacks when not explicitly provided
     ctx_high, ctx_mid = CONTEXT_TIMEFRAMES.get(timeframe, (None, None))
     if daily_stack is None and ctx_high:
-        daily_stack = _fetch_ema_stack(provider, symbol, ctx_high)
+        daily_stack = _fetch_ema_stack(symbol, ctx_high)
     if h4_stack is None and ctx_mid:
-        h4_stack = _fetch_ema_stack(provider, symbol, ctx_mid)
+        h4_stack = _fetch_ema_stack(symbol, ctx_mid)
     # h1_stack = primary TF's own EMA trend (for the "primary" badge in the UI)
     if h1_stack is None:
         h1_stack = trend.ema_stack_score
@@ -399,13 +421,13 @@ async def get_mtf_analysis(
     except Exception as e:
         errors["1D"] = str(e)
 
-    d_stack = daily_result.technical_state.daily_trend if daily_result else None
     daily_stack_int = None
     if daily_result:
-        trend_ind = compute_trend_indicators(
-            _get_provider().get_ohlcv(DataRequest(symbol, "1D", 500))
-        )
-        daily_stack_int = trend_ind.ema_stack_score
+        try:
+            trend_ind = compute_trend_indicators(_get_ohlcv_with_fallback(symbol, "1D", 500))
+            daily_stack_int = trend_ind.ema_stack_score
+        except Exception:
+            pass
 
     try:
         h4_result = _run_analysis_pipeline(
@@ -418,9 +440,7 @@ async def get_mtf_analysis(
     h4_stack_int = None
     if h4_result:
         try:
-            trend_h4 = compute_trend_indicators(
-                _get_provider().get_ohlcv(DataRequest(symbol, "4H", 500))
-            )
+            trend_h4 = compute_trend_indicators(_get_ohlcv_with_fallback(symbol, "4H", 500))
             h4_stack_int = trend_h4.ema_stack_score
         except Exception:
             pass
