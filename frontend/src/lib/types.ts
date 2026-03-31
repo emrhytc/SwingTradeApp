@@ -108,3 +108,67 @@ export interface AnalysisResponse {
 
 export const TIMEFRAMES = ["15m", "1H", "4H", "1D", "1W"] as const;
 export type Timeframe = (typeof TIMEFRAMES)[number];
+
+// ── Paper Trading ─────────────────────────────────────────────────────────────
+
+export type TradeDirection = "long" | "short";
+export type CloseReason    = "manual" | "expired";
+
+export interface TradeResponse {
+  id:            number;
+  symbol:        string;
+  timeframe:     string;
+  direction:     TradeDirection;
+  position_size: number;
+
+  entry_price:   number;
+  entry_time:    string;
+
+  exit_price:    number | null;
+  exit_time:     string | null;
+  close_reason:  CloseReason | null;
+
+  pnl_usd:       number | null;
+  pnl_pct:       number | null;
+  is_open:       boolean;
+
+  // Live fields (open trades only)
+  current_price:      number | null;
+  unrealized_pnl_usd: number | null;
+  unrealized_pnl_pct: number | null;
+  duration_hours:     number | null;
+}
+
+export interface AccountResponse {
+  starting_capital:  number;
+  realized_pnl:      number;
+  total_capital:     number;
+  allocated_capital: number;
+  available_capital: number;
+  unrealized_pnl:    number;
+  net_equity:        number;
+  open_count:        number;
+  max_positions:     number;
+  can_open:          boolean;
+  reset_at:          string;
+}
+
+export interface PerformanceResponse {
+  total_trades:     number;
+  open_trades:      number;
+  closed_trades:    number;
+  winning_trades:   number;
+  losing_trades:    number;
+  win_rate:         number;
+  total_pnl_usd:    number;
+  avg_pnl_usd:      number;
+  best_trade_usd:   number;
+  worst_trade_usd:  number;
+  total_return_pct: number;
+}
+
+export interface PortfolioResponse {
+  account:     AccountResponse;
+  open_trades: TradeResponse[];
+  performance: PerformanceResponse;
+}

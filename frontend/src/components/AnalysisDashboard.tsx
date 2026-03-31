@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { DecisionBanner } from "./DecisionBanner";
 import { ScoreGauge } from "./ScoreGauge";
@@ -7,14 +8,36 @@ import { ExplanationPanel } from "./ExplanationPanel";
 import { TechnicalStatePanel } from "./TechnicalStatePanel";
 import { ComponentScoresPanel } from "./ComponentScoresPanel";
 import { ChartContainer } from "./ChartContainer";
+import { openTrade } from "@/lib/api";
 
 interface Props {
   symbol: string;
   timeframe: string;
+  onOpenTrade?: (direction: "long" | "short") => void;
 }
 
-export function AnalysisDashboard({ symbol, timeframe }: Props) {
+export function AnalysisDashboard({ symbol, timeframe, onOpenTrade }: Props) {
   const { data, isLoading, isError, error, isFetching } = useAnalysis(symbol, timeframe);
+  const [opening, setOpening] = useState<"long" | "short" | null>(null);
+  const [tradeMsg, setTradeMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const handleOpenTrade = async (direction: "long" | "short") => {
+    setOpening(direction);
+    setTradeMsg(null);
+    try {
+      const trade = await openTrade(symbol, timeframe, direction);
+      setTradeMsg({
+        text: `✓ ${direction === "long" ? "Long" : "Short"} işlem açıldı @ ${trade.entry_price.toFixed(4)}`,
+        ok: true,
+      });
+      onOpenTrade?.(direction);
+    } catch (e: any) {
+      setTradeMsg({ text: e.message ?? "İşlem açılamadı", ok: false });
+    } finally {
+      setOpening(null);
+      setTimeout(() => setTradeMsg(null), 5000);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -43,7 +66,6 @@ export function AnalysisDashboard({ symbol, timeframe }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Refresh indicator */}
       {isFetching && (
         <div className="flex items-center gap-2 text-xs text-muted">
           <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
@@ -61,7 +83,7 @@ export function AnalysisDashboard({ symbol, timeframe }: Props) {
         analyzedAt={data.analyzed_at}
       />
 
-      {/* Row 2: Score cards */}
+      {/* Row 2: Score cards + Trade buttons */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <ScoreGauge label="Overall" score={data.overall_score} size="lg" />
         <ScoreGauge label="Long" score={data.long_score} direction="long" />
@@ -73,6 +95,39 @@ export function AnalysisDashboard({ symbol, timeframe }: Props) {
             value={data.risk_level}
             colorClass={riskColor(data.risk_level)}
           />
+        </div>
+      </div>
+
+      {/* Paper Trade Panel */}
+      <div className="rounded-xl border border-surface-border bg-surface-card px-4 py-3">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-xs font-medium text-slate-300">Sanal İşlem Aç</p>
+            <p className="text-[11px] text-muted mt-0.5">
+              {symbol} · {timeframe} · $100,000 pozisyon büyüklüğü
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {tradeMsg && (
+              <span className={`text-xs ${tradeMsg.ok ? "text-green-400" : "text-red-400"}`}>
+                {tradeMsg.text}
+              </span>
+            )}
+            <button
+              onClick={() => handleOpenTrade("long")}
+              disabled={!!opening}
+              className="rounded-lg bg-green-700/30 border border-green-700 px-4 py-1.5 text-xs font-semibold text-green-400 hover:bg-green-700/50 disabled:opacity-40 transition-colors"
+            >
+              {opening === "long" ? "Açılıyor…" : "▲ Long Aç"}
+            </button>
+            <button
+              onClick={() => handleOpenTrade("short")}
+              disabled={!!opening}
+              className="rounded-lg bg-red-700/30 border border-red-700 px-4 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-700/50 disabled:opacity-40 transition-colors"
+            >
+              {opening === "short" ? "Açılıyor…" : "▼ Short Aç"}
+            </button>
+          </div>
         </div>
       </div>
 
