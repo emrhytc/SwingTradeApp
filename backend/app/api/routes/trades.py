@@ -49,24 +49,42 @@ async def _get_or_create_account(session: AsyncSession) -> Account:
 
 
 def _fetch_current_price(symbol: str) -> Optional[float]:
-    """Get latest close price via TradingView → yfinance fallback."""
+    """
+    Get latest close price directly via yfinance Ticker (no bar validation).
+    Falls back to TradingView provider if yfinance fails.
+    """
+    import yfinance as yf
+    from app.api.routes.analysis import SYMBOL_ALIASES
+
+    # Map to yfinance ticker if needed (e.g. NQ1! → NQ=F, XAUUSD → GC=F)
+    yf_sym = SYMBOL_ALIASES.get(symbol.upper(), symbol)
+
+    # Try yfinance directly — period="5d" avoids the 50-bar minimum entirely
+    try:
+        ticker = yf.Ticker(yf_sym)
+        hist = ticker.history(period="5d", interval="1d", auto_adjust=True)
+        if hist is not None and not hist.empty and "Close" in hist.columns:
+            return float(hist["Close"].iloc[-1])
+        # Some symbols use fast_info for latest price
+        price = getattr(ticker, "fast_info", None)
+        if price is not None:
+            last = getattr(price, "last_price", None)
+            if last:
+                return float(last)
+        logger.warning("yfinance returned no usable price for %s", yf_sym)
+    except Exception as e:
+        logger.warning("yfinance price fetch failed for %s: %s", yf_sym, e)
+
+    # Fallback: TradingView WebSocket provider
     try:
         from app.data.providers.tradingview_provider import TradingViewProvider
         from app.data.providers.base import DataRequest
         df = TradingViewProvider().get_ohlcv(DataRequest(symbol=symbol, timeframe="1D", bars=60))
         return float(df["close"].iloc[-1])
-    except Exception:
-        pass
-    try:
-        from app.data.providers.yfinance_provider import YFinanceProvider
-        from app.data.providers.base import DataRequest
-        from app.api.routes.analysis import SYMBOL_ALIASES
-        yf_sym = SYMBOL_ALIASES.get(symbol.upper(), symbol)
-        df = YFinanceProvider().get_ohlcv(DataRequest(symbol=yf_sym, timeframe="1D", bars=60))
-        return float(df["close"].iloc[-1])
     except Exception as e:
-        logger.warning("Could not fetch price for %s: %s", symbol, e)
-        return None
+        logger.warning("TradingView price fetch failed for %s: %s", symbol, e)
+
+    return None
 
 
 def _calc_pnl(direction: str, entry: float, current: float, size: float):
