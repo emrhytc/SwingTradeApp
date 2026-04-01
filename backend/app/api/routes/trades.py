@@ -53,7 +53,7 @@ def _fetch_current_price(symbol: str) -> Optional[float]:
     try:
         from app.data.providers.tradingview_provider import TradingViewProvider
         from app.data.providers.base import DataRequest
-        df = TradingViewProvider().get_ohlcv(DataRequest(symbol=symbol, timeframe="1D", bars=5))
+        df = TradingViewProvider().get_ohlcv(DataRequest(symbol=symbol, timeframe="1D", bars=60))
         return float(df["close"].iloc[-1])
     except Exception:
         pass
@@ -62,7 +62,7 @@ def _fetch_current_price(symbol: str) -> Optional[float]:
         from app.data.providers.base import DataRequest
         from app.api.routes.analysis import SYMBOL_ALIASES
         yf_sym = SYMBOL_ALIASES.get(symbol.upper(), symbol)
-        df = YFinanceProvider().get_ohlcv(DataRequest(symbol=yf_sym, timeframe="1D", bars=5))
+        df = YFinanceProvider().get_ohlcv(DataRequest(symbol=yf_sym, timeframe="1D", bars=60))
         return float(df["close"].iloc[-1])
     except Exception as e:
         logger.warning("Could not fetch price for %s: %s", symbol, e)
