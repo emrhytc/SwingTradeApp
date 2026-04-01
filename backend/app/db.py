@@ -12,8 +12,11 @@ from app.config import settings
 
 # Render supplies postgres:// URLs; SQLAlchemy needs postgresql+asyncpg://
 def _normalise_url(url: str) -> str:
+    # Render supplies postgres:// or postgresql:// — both need asyncpg driver
     if url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
 
 _db_url = _normalise_url(settings.DATABASE_URL)
