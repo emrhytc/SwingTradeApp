@@ -9,6 +9,12 @@
 ##      and set it as NEXT_PUBLIC_API_URL + API_URL on the frontend service.
 ##      Then copy the frontend URL and set it as CORS_ORIGINS on the backend service.
 
+databases:
+  - name: swingtradeapp-db
+    plan: free
+    databaseName: swingtradeapp
+    user: swingtradeapp
+
 services:
   # ─────────────────────────────────────────────
   # Backend — FastAPI
@@ -26,7 +32,9 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:////tmp/swingtrader.db
+        fromDatabase:
+          name: swingtradeapp-db
+          property: connectionString
       - key: CACHE_TTL_SECONDS
         value: 300
       - key: PYTHON_VERSION

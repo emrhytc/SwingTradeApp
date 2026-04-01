@@ -11,5 +11,6 @@ pytest==8.3.5
 pytest-asyncio==0.26.0
 sqlalchemy==2.0.40
 aiosqlite==0.21.0
+asyncpg==0.30.0
 python-multipart==0.0.20
 websocket-client>=1.8.0
